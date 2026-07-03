@@ -83,7 +83,6 @@ pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple
 
 - `google_enabled` (bool, 默认 false): 是否启用 Google。
 - `google_language` (str): Google 搜索语言。
-  Google 使用 Opera Mini 兼容模式请求基础 HTML 结果页，避免普通浏览器 UA 收到 JavaScript 壳页；如果当前代理/IP 被 Google 返回 429/sorry，插件会返回空结果并交给多引擎降级链。
 - `bing_enabled` (bool, 默认 true): 是否启用 Bing。
 - `bing_region` (str): Bing 区域代码。
 - `sogou_enabled` (bool, 默认 true): 是否启用搜狗。
@@ -140,16 +139,6 @@ pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple
 ### 诊断命令
 
 启用插件后可在群/私聊里发送 `/google_search_status`，会返回插件当前的版本、模型 task、默认引擎、启用引擎清单、图片搜索/缩写翻译开关等运行状态信息，方便排查配置是否生效。
-
-本地排查搜索引擎可用性时，可以在 MaiBot 项目根目录运行全引擎探针：
-
-```bash
-uv run python -m plugins.google_search_plugin.tests.all_engines_probe
-uv run python -m plugins.google_search_plugin.tests.all_engines_probe "Python 3.13 新特性"
-uv run python -m plugins.google_search_plugin.tests.google_opera_mini_probe
-```
-
-`all_engines_probe` 只调用各搜索引擎的 `search` 层，不抓正文、不走 LLM，总结每个引擎的耗时、返回数量和前几条结果。默认会临时启用所有引擎，方便判断当前代理、API key 和引擎解析是否正常。`google_opera_mini_probe` 只验证 Google 的 Opera Mini 兼容模式，会输出 HTTP 状态、最终 URL、HTML 长度、`h3` 数量、是否命中 JS 壳或 CAPTCHA/sorry。
 
 ### 总结
 你只需要自然地与麦麦对话，当她认为需要“上网查一下”的时候，这个插件就会被激活
