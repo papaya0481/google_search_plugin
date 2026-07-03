@@ -60,12 +60,22 @@ class LLMRunner:
         target_model = str(self._config.model_name or "replyer")
         temperature = self._config.temperature
         timeout = max(int(self._config.llm_timeout_seconds or 60), 1)
+        # MaiBot cap.call RPC 层默认超时较短,不足以覆盖慢模型推理。
+        # 通过 rpc_timeout_ms 关键字覆盖默认值,参见:
+        # https://github.com/Mai-with-u/MaiBot/issues/1725
+        # https://github.com/Mai-with-u/MaiBot/pull/1781
+        # 加 5s 余量确保 RPC 层不先于客户端 asyncio.wait_for 触发。
+        # 注意: rpc_timeout_ms 仅在 >= 含 PR#1781 的 MaiBot 版本上生效。旧版 MaiBot 会忽略该参数
+        # (作为额外参数传递给 capability handler),RPC 层仍按 30000ms 截断,但不会报错。
+        rpc_timeout_ms = max(timeout + 5, 30) * 1000
         logger.info(
-            "调用 ctx.llm.generate, model=%s temperature=%s prompt_len=%d timeout=%ds",
+            "调用 ctx.llm.generate, model=%s temperature=%s prompt_len=%d "
+            "timeout=%ds rpc_timeout_ms=%dms",
             target_model,
             temperature,
             len(prompt),
             timeout,
+            rpc_timeout_ms,
         )
 
         try:
@@ -74,6 +84,7 @@ class LLMRunner:
                     prompt=prompt,
                     model=target_model,            # 必须显式传,空字符串会被 host 回退到 embedding
                     temperature=temperature,
+                    rpc_timeout_ms=rpc_timeout_ms,  # 覆盖 cap.call RPC 层默认超时
                 ),
                 timeout=timeout,
             )
