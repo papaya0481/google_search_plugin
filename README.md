@@ -10,8 +10,6 @@ tavily搜索引擎可以前往[官网](https://app.tavily.com)注册后获得密
 You搜索引擎需要在[官网](https://you.com/platform) 获取 API Key；Live News / Images 为 early access，需账号权限）
 ## 以上二者均可以使用作者自建的免费注册临时[邮箱1](https://xiaowan258.me)或[邮箱2](https://mail.xiaowan.me)注册
 
-<img width="735" height="308" alt="image" src="https://github.com/user-attachments/assets/9bc86124-b3a8-43e0-addb-1884133658c2" />
-
 ## 📦 依赖安装
 
 为了确保插件正常工作，您需要安装Python依赖。**在你的麦麦的运行环境**中于**本插件**的根目录下执行以下命令即可：
