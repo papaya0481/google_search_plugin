@@ -98,16 +98,6 @@ class GoogleSearchPlugin(MaiBotPlugin):
             "image_search": ("action", bool(cfg.actions.image_search_enabled)),
         }
 
-    def _web_search_timeout_ms(self) -> int:
-        """推导 web_search 组件级超时(毫秒)。
-
-        由 ``llm_timeout_seconds`` 推导,固定附加 60s 用作搜索、抓取和
-        调度余量,覆盖 host 侧 ``plugin.invoke_tool`` 默认的 60000ms 硬编码超时。
-        MaiBot 主线支持从组件注册元数据读取 ``timeout_ms``,参见 PR#1781。
-        """
-        llm_timeout_seconds = max(self.config.models.llm_timeout_seconds, 1)
-        return llm_timeout_seconds * 1000 + 60000
-
     def get_components(self) -> list[dict[str, Any]]:
         """收集组件声明,并按配置写入可开关组件的初始启用态。
 
@@ -127,14 +117,6 @@ class GoogleSearchPlugin(MaiBotPlugin):
             metadata = comp.get("metadata")
             if isinstance(metadata, dict):
                 metadata["enabled"] = state[1]
-
-        # web_search 单独写入组件级超时,覆盖 host 侧 plugin.invoke_tool 默认 60s 硬编码。
-        timeout_ms = self._web_search_timeout_ms()
-        for comp in components:
-            if comp.get("name") == "web_search":
-                metadata = comp.setdefault("metadata", {})
-                metadata["timeout_ms"] = timeout_ms
-
         return components
 
     async def _sync_component_states(self) -> None:
