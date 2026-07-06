@@ -89,6 +89,7 @@ class SearchResult:
     abstract: str = ""
     rank: int = 0
     content: str = ""
+    score: Optional[float] = None
 
 class BaseSearchEngine:
     """搜索引擎基类"""
