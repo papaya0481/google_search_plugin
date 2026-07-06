@@ -47,7 +47,14 @@ class TavilyEngine(BaseSearchEngine, ApiKeyMixin):
         self.turbo = self.config.get("turbo", False)
         self.last_answer: Optional[str] = None
 
-    async def search(self, query: str, num_results: int, *, topic: Optional[str] = None) -> List[SearchResult]:
+    async def search(
+        self,
+        query: str,
+        num_results: int,
+        *,
+        topic: Optional[str] = None,
+        force_lightweight: bool = False,
+    ) -> List[SearchResult]:
         """Execute a search request via the Tavily API."""
         api_keys = self._iter_api_keys()
         if not api_keys:
@@ -67,8 +74,8 @@ class TavilyEngine(BaseSearchEngine, ApiKeyMixin):
             "query": query,
             "search_depth": self.search_depth,
             "max_results": request_max_results,
-            "include_answer": self.include_answer,
-            "include_raw_content": self.include_raw_content,
+            "include_answer": False if force_lightweight else self.include_answer,
+            "include_raw_content": False if force_lightweight else self.include_raw_content,
             "topic": topic_value,
             "turbo": self.turbo,
         }

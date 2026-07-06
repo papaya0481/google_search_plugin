@@ -14,10 +14,11 @@ from .llm_runner import LLMCallError
 from .prompts import build_summarize_prompt, format_results_for_prompt
 
 if TYPE_CHECKING:
-    from ..config import SearchBackendSection
+    from ..config import SearchBackendSection, TavilySubagentSection
     from .content_fetcher import ContentFetcher
     from .engine_chain import EngineChain
     from .llm_runner import LLMRunner
+    from .search_subagent import TavilySearchSubagent
 
 logger = logging.getLogger(__name__)
 
@@ -32,11 +33,15 @@ class SearchPipeline:
         engine_chain: "EngineChain",
         content_fetcher: "ContentFetcher",
         llm_runner: "LLMRunner",
+        tavily_subagent_config: "TavilySubagentSection",
+        tavily_subagent: "TavilySearchSubagent",
     ) -> None:
         self._backend = backend_cfg
         self._engines = engine_chain
         self._fetcher = content_fetcher
         self._llm = llm_runner
+        self._tavily_subagent_config = tavily_subagent_config
+        self._tavily_subagent = tavily_subagent
 
     async def run(
         self,
@@ -61,12 +66,15 @@ class SearchPipeline:
             question,
             max_results,
             tavily_topic=tavily_topic_override,
+            tavily_force_lightweight=self._tavily_subagent_config.enabled,
         )
         if not results:
             return f"关于「{question}」，我没有找到相关的网络信息。"
 
         # ---- 2. 内容补充(Tavily inline / you_contents / 普通抓取) ---- #
         last_engine = self._engines.last_success_engine or ""
+        if last_engine == "tavily" and self._tavily_subagent_config.enabled:
+            return await self._tavily_subagent.run(question, results, bot_name=bot_name)
         if last_engine == "tavily":
             self._fetcher.integrate_inline_content(results, self._engines.last_tavily_answer)
         elif self._backend.fetch_content:

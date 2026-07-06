@@ -24,6 +24,7 @@ from .pipelines.engine_chain import EngineChain
 from .pipelines.image_search_pipeline import ImageSearchPipeline
 from .pipelines.llm_runner import LLMRunner
 from .pipelines.search_pipeline import SearchPipeline
+from .pipelines.search_subagent import TavilySearchSubagent
 from .pipelines.url_pipeline import UrlPipeline, is_url
 from .pipelines.zhihu_extractor import ZhihuExtractor
 from .translators.nbnhhsh import NbnhhshTranslator
@@ -41,6 +42,7 @@ class GoogleSearchPlugin(MaiBotPlugin):
     _content_fetcher: Optional[ContentFetcher]
     _llm_runner: Optional[LLMRunner]
     _search_pipeline: Optional[SearchPipeline]
+    _search_subagent: Optional[TavilySearchSubagent]
     _url_pipeline: Optional[UrlPipeline]
     _translator: Optional[NbnhhshTranslator]
     _image_pipeline: Optional[ImageSearchPipeline]
@@ -51,6 +53,7 @@ class GoogleSearchPlugin(MaiBotPlugin):
         self._content_fetcher = None
         self._llm_runner = None
         self._search_pipeline = None
+        self._search_subagent = None
         self._url_pipeline = None
         self._translator = None
         self._image_pipeline = None
@@ -160,11 +163,19 @@ class GoogleSearchPlugin(MaiBotPlugin):
             zhihu_extractor=zhihu,
         )
         self._llm_runner = LLMRunner(self.ctx, cfg.models)
+        self._search_subagent = TavilySearchSubagent(
+            config=cfg.tavily_subagent,
+            backend_config=cfg.search_backend,
+            tavily_engine=self._engine_chain.tavily,
+            llm_runner=self._llm_runner,
+        )
         self._search_pipeline = SearchPipeline(
             backend_cfg=cfg.search_backend,
             engine_chain=self._engine_chain,
             content_fetcher=self._content_fetcher,
             llm_runner=self._llm_runner,
+            tavily_subagent_config=cfg.tavily_subagent,
+            tavily_subagent=self._search_subagent,
         )
         self._url_pipeline = UrlPipeline(
             content_fetcher=self._content_fetcher,
@@ -201,6 +212,7 @@ class GoogleSearchPlugin(MaiBotPlugin):
                 self._content_fetcher,
                 self._llm_runner,
                 self._search_pipeline,
+                self._search_subagent,
                 self._url_pipeline,
                 self._translator,
                 self._image_pipeline,

@@ -137,6 +137,7 @@ class EngineChain:
         num_results: int,
         *,
         tavily_topic: Optional[str] = None,
+        tavily_force_lightweight: bool = False,
     ) -> "list[SearchResult]":
         """带降级的搜索。
 
@@ -144,6 +145,7 @@ class EngineChain:
             query: 搜索关键词
             num_results: 期望的结果数量
             tavily_topic: 可选的 Tavily topic 覆写(general/news)
+            tavily_force_lightweight: 是否强制 Tavily 只返回轻量搜索结果
 
         Returns:
             搜索结果列表;所有引擎都失败时返回空列表
@@ -181,7 +183,12 @@ class EngineChain:
 
             try:
                 if engine_name == "tavily":
-                    results = await engine.search(query, num_results, topic=tavily_topic)  # type: ignore[call-arg]
+                    results = await engine.search(  # type: ignore[call-arg]
+                        query,
+                        num_results,
+                        topic=tavily_topic,
+                        force_lightweight=tavily_force_lightweight,
+                    )
                 else:
                     results = await engine.search(query, num_results)
                 if results:

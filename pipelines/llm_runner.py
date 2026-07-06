@@ -10,9 +10,10 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, Dict, List
 import asyncio
 import logging
-from typing import TYPE_CHECKING
 
 from ._envelope import peel_envelope
 
@@ -22,6 +23,15 @@ if TYPE_CHECKING:
     from ..config import ModelsSection
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class LLMToolResponse:
+    """一次带私有工具的 LLM 响应。"""
+
+    response: str = ""
+    reasoning: str = ""
+    tool_calls: List[Dict[str, Any]] = field(default_factory=list)
 
 
 class LLMCallError(RuntimeError):
@@ -124,3 +134,55 @@ class LLMRunner:
             preview,
         )
         return response_text.strip()
+
+    async def generate_with_tools(
+        self,
+        messages: List[Dict[str, Any]],
+        tools: List[Dict[str, Any]],
+    ) -> LLMToolResponse:
+        """执行一次带私有工具定义的 LLM 调用。
+
+        重试由调用方管理，以便将实际请求次数与 subagent 决策轮次分离。
+        """
+        if not messages:
+            raise LLMCallError("带工具 LLM 调用缺少消息")
+
+        target_model = self._config.model_name
+        temperature = self._config.temperature
+        timeout = max(int(self._config.llm_timeout_seconds), 1)
+        logger.info(
+            "调用 ctx.llm.generate_with_tools, model=%s messages=%d tools=%d timeout=%ds",
+            target_model,
+            len(messages),
+            len(tools),
+            timeout,
+        )
+        try:
+            result = await asyncio.wait_for(
+                self._ctx.llm.generate_with_tools(
+                    prompt=messages,
+                    tools=tools,
+                    model=target_model,
+                    temperature=temperature,
+                    timeout_ms=timeout * 1000,
+                ),
+                timeout=timeout + 5,
+            )
+        except asyncio.TimeoutError as exc:
+            raise LLMCallError(f"带工具 LLM 调用超时 ({timeout}s)") from exc
+        except Exception as exc:
+            raise LLMCallError(f"带工具 LLM 调用异常: {exc}") from exc
+
+        result = peel_envelope(result)
+        if not isinstance(result, dict):
+            raise LLMCallError(f"带工具 LLM 返回非 dict: {type(result).__name__}")
+        if not bool(result.get("success", False)):
+            raise LLMCallError(f"带工具 LLM 调用失败: {result.get('error') or '<no error key>'}")
+
+        response_text = str(result.get("response") or "").strip()
+        reasoning = str(result.get("reasoning") or "").strip()
+        raw_tool_calls = result.get("tool_calls")
+        tool_calls = [item for item in raw_tool_calls if isinstance(item, dict)] if isinstance(raw_tool_calls, list) else []
+        if not response_text and not tool_calls:
+            raise LLMCallError("带工具 LLM 返回空响应且没有工具调用")
+        return LLMToolResponse(response=response_text, reasoning=reasoning, tool_calls=tool_calls)
