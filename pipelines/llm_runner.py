@@ -182,7 +182,11 @@ class LLMRunner:
         response_text = str(result.get("response") or "").strip()
         reasoning = str(result.get("reasoning") or "").strip()
         raw_tool_calls = result.get("tool_calls")
-        tool_calls = [item for item in raw_tool_calls if isinstance(item, dict)] if isinstance(raw_tool_calls, list) else []
+        if raw_tool_calls is not None and not isinstance(raw_tool_calls, list):
+            raise LLMCallError("带工具 LLM 的 tool_calls 不是数组")
+        if isinstance(raw_tool_calls, list) and any(not isinstance(item, dict) for item in raw_tool_calls):
+            raise LLMCallError("带工具 LLM 的 tool_calls 包含非对象项")
+        tool_calls = raw_tool_calls if isinstance(raw_tool_calls, list) else []
         if not response_text and not tool_calls:
             raise LLMCallError("带工具 LLM 返回空响应且没有工具调用")
         return LLMToolResponse(response=response_text, reasoning=reasoning, tool_calls=tool_calls)
