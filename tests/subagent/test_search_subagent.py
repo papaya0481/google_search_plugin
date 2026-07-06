@@ -8,7 +8,7 @@ import sys
 import pytest
 
 
-PLUGIN_ROOT = Path(__file__).resolve().parents[1]
+PLUGIN_ROOT = Path(__file__).resolve().parents[2]
 TEST_PACKAGE = "google_search_subagent_under_test"
 
 
