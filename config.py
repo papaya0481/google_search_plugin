@@ -22,7 +22,7 @@ class PluginSection(PluginConfigBase):
 
     name: str = Field(default="google_search", description="插件名称")
     version: str = Field(default="4.0.1", description="插件版本")
-    config_version: str = Field(default="4.0.0", description="配置版本(Runner 用于兼容性校验)")
+    config_version: str = Field(default="4.0.1", description="配置版本(Runner 用于兼容性校验)")
     enabled: bool = Field(default=True, description="是否启用插件")
 
 
@@ -197,6 +197,24 @@ class EnginesSection(PluginConfigBase):
     you_images_enabled: bool = Field(default=False, description="是否启用 You Images(early access)")
 
 
+class TavilySubagentSection(PluginConfigBase):
+    """Tavily 私有搜索 subagent 参数。"""
+
+    __ui_label__ = "Tavily Subagent"
+    __ui_icon__ = "bot"
+    __ui_order__ = 5
+
+    enabled: bool = Field(default=False, description="是否启用 Tavily 私有搜索 subagent 实验功能")
+    max_rounds: int = Field(default=4, ge=1, le=10, description="subagent 最大决策轮次")
+    llm_max_retries: int = Field(default=2, ge=0, le=5, description="单次 subagent LLM 调用失败后的重试次数")
+    max_extract_calls: int = Field(default=2, ge=0, le=5, description="单次搜索最多执行的 Extract 动作次数")
+    extract_max_retries: int = Field(default=2, ge=0, le=5, description="单次 Extract 动作失败后的重试次数")
+    extract_max_urls: int = Field(default=3, ge=1, le=3, description="单次 Extract 动作最多抽取的 URL 数")
+    extract_depth: Literal["basic", "advanced"] = Field(default="basic", description="Tavily Extract 深度")
+    extract_chunks_per_source: int = Field(default=3, ge=1, le=5, description="每个来源返回的相关正文片段数")
+    extract_timeout_seconds: int = Field(default=30, ge=1, le=60, description="Tavily Extract 超时时间(秒)")
+
+
 class TranslationSection(PluginConfigBase):
     """缩写翻译(神奇海螺 nbnhhsh)参数"""
 
@@ -222,4 +240,5 @@ class GoogleSearchPluginConfig(PluginConfigBase):
     actions: ActionsSection = Field(default_factory=ActionsSection)
     search_backend: SearchBackendSection = Field(default_factory=SearchBackendSection)
     engines: EnginesSection = Field(default_factory=EnginesSection)
+    tavily_subagent: TavilySubagentSection = Field(default_factory=TavilySubagentSection)
     translation: TranslationSection = Field(default_factory=TranslationSection)
