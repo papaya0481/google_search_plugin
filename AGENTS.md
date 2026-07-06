@@ -10,7 +10,7 @@
 
 ## 行为
 
-- 新增默认关闭的 `tavily_subagent_enabled`。
+- 新增默认关闭的 `[tavily_subagent].enabled`。
 - 关闭时保留原有 `tavily_include_answer`、`tavily_include_raw_content` 行为。
 - 开启时忽略上述两个配置值，Tavily Search 强制使用 `include_answer=false`、`include_raw_content=false`，并保留 `title/url/content/score`。
 - subagent 只获得两个不注册为公开 `@Tool` 的私有动作：
