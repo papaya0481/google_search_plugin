@@ -80,11 +80,14 @@ class FakeLLMRunner:
 
 
 class FakeTavilyEngine:
-    def __init__(self) -> None:
+    def __init__(self, outcome: Any = None) -> None:
         self.calls: list[dict[str, Any]] = []
+        self.outcome = outcome
 
     async def extract(self, urls: list[str], **kwargs: Any) -> Any:
         self.calls.append({"urls": urls, **kwargs})
+        if self.outcome is not None:
+            return self.outcome
         return SimpleNamespace(
             contents={urls[0]: "抽取到的正文"},
             failed_urls={},
@@ -255,3 +258,32 @@ async def test_invalid_result_id_consumes_round_then_forces_summary() -> None:
     assert result.startswith("无有关信息")
     assert len(llm.calls) == 2
     assert [tool["name"] for tool in llm.calls[1]["tools"]] == ["finish"]
+
+
+@pytest.mark.asyncio
+async def test_extract_failure_is_formatted_without_python_dict_repr() -> None:
+    llm = FakeLLMRunner(
+        [
+            tool_response("extract", {"result_ids": ["r1"]}),
+            tool_response("finish", {"mode": "summary", "answer": "无有关信息", "result_ids": ["r1"]}),
+        ]
+    )
+    tavily = FakeTavilyEngine(
+        SimpleNamespace(
+            contents={},
+            failed_urls={"https://example.com/a": "blocked"},
+            error="",
+        )
+    )
+    agent = TavilySearchSubagent(
+        config=build_config(),
+        backend_config=SimpleNamespace(max_content_length=3000),
+        tavily_engine=tavily,
+        llm_runner=llm,
+    )
+
+    await agent.run("问题", build_results(), bot_name="麦麦")
+
+    tool_result = llm.calls[1]["messages"][-1]["content"]
+    assert tool_result == "Extract 失败：\n- [r1] Example：blocked\n请基于现有摘要调用 finish。"
+    assert "{'https://example.com/a': 'blocked'}" not in tool_result

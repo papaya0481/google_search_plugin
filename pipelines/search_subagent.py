@@ -201,10 +201,18 @@ class TavilySearchSubagent:
             max_retries=self._config.extract_max_retries,
             max_content_length=self._backend.max_content_length,
         )
-        if not outcome.contents:
-            return f"Extract 失败: {outcome.error or outcome.failed_urls or '没有可用正文'}。请基于现有摘要调用 finish。"
-
         url_to_result_id = {result.url: result_id for result_id, result in result_map.items()}
+        if not outcome.contents:
+            failure_details = self._format_extract_failures(
+                outcome.failed_urls,
+                url_to_result_id,
+                result_map,
+            )
+            error_details = outcome.error.strip() if outcome.error else ""
+            details = "\n".join(part for part in (error_details, failure_details) if part)
+            details = details or "没有可用正文"
+            return f"Extract 失败：\n{details}\n请基于现有摘要调用 finish。"
+
         sections: List[str] = []
         for url, content in outcome.contents.items():
             result_id = url_to_result_id.get(url)
@@ -212,9 +220,24 @@ class TavilySearchSubagent:
                 continue
             sections.append(f"[{result_id}] {result_map[result_id].title}\n{content}")
         if outcome.failed_urls:
-            failed = ", ".join(url_to_result_id.get(url, url) for url in outcome.failed_urls)
-            sections.append(f"以下来源抽取失败: {failed}")
+            failed = self._format_extract_failures(outcome.failed_urls, url_to_result_id, result_map)
+            sections.append(f"以下来源抽取失败：\n{failed}")
         return "\n\n".join(sections) if sections else "Extract 没有返回匹配当前结果的正文，请调用 finish。"
+
+    @staticmethod
+    def _format_extract_failures(
+        failed_urls: Dict[str, str],
+        url_to_result_id: Dict[str, str],
+        result_map: Dict[str, "SearchResult"],
+    ) -> str:
+        """将 Extract 失败来源格式化为稳定文本，避免泄漏 Python 容器 repr。"""
+        lines: List[str] = []
+        for url, reason in failed_urls.items():
+            result_id = url_to_result_id.get(url)
+            label = f"[{result_id}] {result_map[result_id].title}" if result_id is not None else url
+            normalized_reason = reason.strip() or "抽取失败"
+            lines.append(f"- {label}：{normalized_reason}")
+        return "\n".join(lines)
 
     def _execute_finish(
         self,
