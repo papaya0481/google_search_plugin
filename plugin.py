@@ -234,6 +234,9 @@ class GoogleSearchPlugin(MaiBotPlugin):
     @Tool(
         "web_search",
         description="谷歌搜索工具。当见到有人发出疑问或者遇到不熟悉的事情时候，直接使用它获得最新知识！",
+        # subagent 的决策轮与 LLM / Extract 重试分别计时，外层 RPC 必须覆盖完整流程。
+        # 每次实际请求仍由各自的短超时限制，避免单个请求无限阻塞。
+        timeout_ms=1_800_000,
         parameters=[
             ToolParameterInfo(
                 name="question",
