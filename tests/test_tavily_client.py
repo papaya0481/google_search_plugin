@@ -101,6 +101,32 @@ async def test_search_preserves_tavily_score(monkeypatch: pytest.MonkeyPatch) ->
     assert len(results) == 1
     assert results[0].score == pytest.approx(0.875)
     assert results[0].content == "query snippet"
+    assert requests[0]["json"]["include_answer"] is True
+    assert requests[0]["json"]["include_raw_content"] is True
+
+
+@pytest.mark.asyncio
+async def test_lightweight_search_ignores_legacy_content_options(monkeypatch: pytest.MonkeyPatch) -> None:
+    responses = [FakeResponse(200, '{"results":[]}')]
+    requests: list[dict[str, Any]] = []
+    monkeypatch.setattr(
+        tavily_module.aiohttp,
+        "ClientSession",
+        lambda **kwargs: FakeSession(responses, requests, **kwargs),
+    )
+    engine = TavilyEngine(
+        {
+            "api_key": "tvly-test",
+            "include_answer": True,
+            "include_raw_content": True,
+        }
+    )
+    monkeypatch.setattr(engine, "_iter_api_keys", lambda: ["tvly-test"])
+
+    await engine.search("example query", 5, force_lightweight=True)
+
+    assert requests[0]["json"]["include_answer"] is False
+    assert requests[0]["json"]["include_raw_content"] is False
 
 
 @pytest.mark.asyncio
