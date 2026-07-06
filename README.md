@@ -29,7 +29,7 @@ pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple
 1. **section 重命名**：`[model_config]` → `[models]`（其中字段名不变，只是 section 名变更）
 2. **新增 section**：`[translation]`（缩写翻译相关参数，不写也行，会用默认值）
 3. **删除 section**：`[storage]` 整段可以删除（搜索结果现在由麦麦内部统一记录到 `tool_records`，不再由插件自己写库）
-4. **`[plugin]` 段新增 `config_version = "4.0.0"`**（必填，麦麦校验配置版本时会用）
+4. **`[plugin]` 段新增 `config_version`**（必填，当前为 `4.0.1`，麦麦校验配置版本时会用）
 
 升级最快的做法：直接删掉旧 `config.toml`，让插件首次启动时自动重新生成 v4 默认配置；再把你原来的 API key / 代理 等设置项搬过去即可。
 
@@ -37,9 +37,9 @@ pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple
 
 1.  **接收搜索词**: planner 调用 `web_search` 时直接传入搜索关键词（或 URL），插件不再做 LLM 查询重写。
 2.  **后端搜索**: 使用该关键词，调用Google、Bing、Tavily 等搜索引擎执行搜索（多引擎自动降级）。
-3.  **内容抓取**: (可选) 抓取搜索结果网页的主要内容（trafilatura/readability/bs4 三级降级；知乎链接走专用抓取）。
-4.  **阅读总结**: 内部LLM阅读所有搜索到的材料。
-5.  **生成答案**: LLM根据阅读的材料，生成最终的总结性答案并返回。
+3.  **兼容流程（默认）**: 按原有配置抓取网页内容，再由内部 LLM 阅读并总结。
+4.  **Tavily Subagent（实验）**: 显式开启后，Tavily Search 只返回轻量摘要；私有 subagent 可选择少量结果执行 Extract，随后通过 `finish` 返回总结或资料列表。
+5.  **继续决策**: 外层 planner 只看到 `web_search` 的最终结果，可据此回复或再次搜索；私有 `extract` / `finish` 不会暴露到外层工具列表。
 
 ## 🔧 配置说明
 
@@ -50,7 +50,7 @@ pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple
 ### `[plugin]`
 - `name` (str): 插件名称，保持默认即可。
 - `version` (str): 插件版本，保持默认即可。
-- `config_version` (str): 配置版本号，**必填**，当前 `4.0.0`。麦麦在加载插件时会校验该字段。
+- `config_version` (str): 配置版本号，**必填**，当前 `4.0.1`。麦麦在加载插件时会校验该字段。
 - `enabled` (bool): 是否启用插件。
 
 ### `[models]`
@@ -92,8 +92,8 @@ pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple
 - `tavily_enabled` (bool): 是否启用 Tavily（需 API key）。
 - `tavily_api_keys` (list[str]) / `tavily_api_key` (str): Tavily key 列表或单个。
 - `tavily_search_depth` (str, choices: basic/advanced): Tavily 搜索深度。
-- `tavily_include_answer` (bool): 是否返回 Tavily 的答案。
-- `tavily_include_raw_content` (bool): 是否返回网页正文片段。
+- `tavily_include_answer` (bool): 兼容流程中是否返回 Tavily 的答案；开启 Tavily Subagent 后会被忽略并强制为 `false`。
+- `tavily_include_raw_content` (bool): 兼容流程中是否随 Search 返回网页正文；开启 Tavily Subagent 后会被忽略并强制为 `false`。
 - `tavily_topic` (str): Tavily 主题参数，如 `general` 或 `news`。**v4 起默认留空**——Tavily 的 news 索引偏向英文国际体育/政治资讯，对中文电竞/娱乐/社交等场景准确率反而下降，因此不再让插件 LLM 自动判断。如有需要可由工具调用方在调用时显式传入 `tavily_topic` 参数覆写。
 - `tavily_turbo` (bool): Tavily Turbo 模式。
 - `you_enabled` (bool): 是否启用 You Search。
@@ -110,6 +110,22 @@ pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple
 - `you_contents_format` (str): Contents 返回内容格式（html/markdown）。
 - `you_contents_force` (bool): 强制使用 Contents，不受引擎来源限制。
 - `you_images_enabled` (bool): 是否启用 You Images（early access）。
+
+### `[tavily_subagent]`
+
+Tavily 两阶段搜索实验，默认关闭。只有本次实际成功使用 Tavily 时才会进入该流程；如果 Tavily 失败并降级到其他引擎，仍使用原有流程。
+
+- `enabled` (bool, 默认 false): 是否启用私有 Tavily Search Subagent。
+- `max_rounds` (int, 默认 4): 最大决策轮次。LLM 失败和超时重试不计入轮次。
+- `llm_max_retries` (int, 默认 2): 每个逻辑 LLM 调用失败后的重试次数，即最多请求 3 次。
+- `max_extract_calls` (int, 默认 2): 单次搜索最多执行的 Extract 动作次数。
+- `extract_max_retries` (int, 默认 2): Extract 临时失败后的独立重试次数。
+- `extract_max_urls` (int, 默认 3): 单次 Extract 最多选择的搜索结果数量。
+- `extract_depth` (str, 默认 basic): Tavily Extract 深度，可选 `basic` / `advanced`。
+- `extract_chunks_per_source` (int, 默认 3): 每个来源返回的相关正文片段数。
+- `extract_timeout_seconds` (int, 默认 30): 单次 Tavily Extract 超时时间。
+
+决策轮耗尽后会进入不计轮次的强制总结阶段。该阶段只能输出有来源的总结，也允许在资料确实不足时明确返回“无有关信息”；只有强制总结的 LLM 重试也全部失败后，才返回初始 Tavily 资料列表。
 
 ### `[translation]`
 缩写翻译工具（基于神奇海螺 nbnhhsh API）。
