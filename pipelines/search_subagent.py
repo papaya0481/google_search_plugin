@@ -24,14 +24,14 @@ logger = logging.getLogger(__name__)
 
 EXTRACT_TOOL: Dict[str, Any] = {
     "name": "extract",
-    "description": "读取当前搜索结果中少量网页与原问题最相关的正文片段。只能提交 result_id。",
+    "description": "读取当前搜索结果中 2～4 个与原问题最相关的网页正文片段，已抽取过的不要重复抽取。只能提交 result_id。",
     "parameters_schema": {
         "type": "object",
         "properties": {
             "result_ids": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "需要读取正文的搜索结果 ID",
+                "description": "需要读取正文的搜索结果 ID，一次 2～4 个，不要重复选择已抽取过的 ID",
             }
         },
         "required": ["result_ids"],
@@ -188,8 +188,6 @@ class TavilySearchSubagent:
         result_ids, error = self._validate_result_ids(arguments.get("result_ids"), result_map)
         if error:
             return error
-        if len(result_ids) > self._config.extract_max_urls:
-            return f"一次最多抽取 {self._config.extract_max_urls} 个结果，请缩小 result_ids。"
 
         urls = [result_map[result_id].url for result_id in result_ids]
         outcome = await self._tavily.extract(

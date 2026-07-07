@@ -14,7 +14,7 @@
 - 关闭时保留原有 `tavily_include_answer`、`tavily_include_raw_content` 行为。
 - 开启时忽略上述两个配置值，Tavily Search 强制使用 `include_answer=false`、`include_raw_content=false`，并保留 `title/url/content/score`。
 - subagent 只获得两个不注册为公开 `@Tool` 的私有动作：
-  - `extract(result_ids)`：只能选择当前搜索结果中的 1～3 个唯一 ID。
+  - `extract(result_ids)`：选择当前搜索结果中 2～4 个唯一 ID，已抽取过的不要重复。
   - `finish(mode="summary"|"results", ...)`：总结必须选择来源；资料模式由插件根据结果 ID 生成。
 - Extract 默认使用 `basic`、原问题作为 `query`、每来源 3 个相关 chunk、最多调用 2 次。
 - subagent 默认最多 4 个成功决策轮。LLM 失败、超时、空响应和响应解析失败使用独立重试预算，失败后重试 2 次，不消耗决策轮。
