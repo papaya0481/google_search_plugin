@@ -117,9 +117,8 @@ Tavily 两阶段搜索实验，默认关闭。只有本次实际成功使用 Tav
 
 - `enabled` (bool, 默认 false): 是否启用私有 Tavily Search Subagent。
 - `max_rounds` (int, 默认 4): 最大决策轮次。LLM 失败和超时重试不计入轮次。
-- `llm_max_retries` (int, 默认 2): 每个逻辑 LLM 调用失败后的重试次数，即最多请求 3 次。
+- `max_retries` (int, 默认 2): LLM 调用和 Extract 临时失败后的重试次数，即最多请求 3 次。
 - `max_extract_calls` (int, 默认 2): 单次搜索最多执行的 Extract 动作次数。
-- `extract_max_retries` (int, 默认 2): Extract 临时失败后的独立重试次数。
 - `extract_depth` (str, 默认 basic): Tavily Extract 深度，可选 `basic` / `advanced`。
 - `extract_chunks_per_source` (int, 默认 3): 每个来源返回的相关正文片段数。
 - `extract_timeout_seconds` (int, 默认 30): 单次 Tavily Extract 超时时间。

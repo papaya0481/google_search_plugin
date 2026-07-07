@@ -98,9 +98,8 @@ class FakeTavilyEngine:
 def build_config(**overrides: Any) -> Any:
     values = {
         "max_rounds": 4,
-        "llm_max_retries": 2,
+        "max_retries": 2,
         "max_extract_calls": 2,
-        "extract_max_retries": 2,
         "extract_depth": "basic",
         "extract_chunks_per_source": 3,
         "extract_timeout_seconds": 30,

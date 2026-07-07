@@ -130,12 +130,12 @@ class TavilySearchSubagent:
     ) -> LLMToolResponse:
         """按独立预算重试同一个逻辑 LLM 调用。"""
         last_error: Optional[LLMCallError] = None
-        for retry_index in range(self._config.llm_max_retries + 1):
+        for retry_index in range(self._config.max_retries + 1):
             try:
                 return await self._llm.generate_with_tools(messages, tools)
             except LLMCallError as exc:
                 last_error = exc
-                if retry_index >= self._config.llm_max_retries:
+                if retry_index >= self._config.max_retries:
                     break
                 logger.warning("Tavily subagent LLM 调用失败，准备第 %d 次重试: %s", retry_index + 1, exc)
                 await asyncio.sleep(0.5 * (2**retry_index))
@@ -157,7 +157,7 @@ class TavilySearchSubagent:
                 ),
             },
         ]
-        for retry_index in range(self._config.llm_max_retries + 1):
+        for retry_index in range(self._config.max_retries + 1):
             try:
                 response = await self._llm.generate_with_tools(forced_messages, [FINISH_TOOL])
             except LLMCallError as exc:
@@ -175,7 +175,7 @@ class TavilySearchSubagent:
                 else:
                     logger.warning("Tavily subagent 强制总结动作数量不是 1")
 
-            if retry_index < self._config.llm_max_retries:
+            if retry_index < self._config.max_retries:
                 await asyncio.sleep(0.5 * (2**retry_index))
         return None
 
@@ -196,7 +196,7 @@ class TavilySearchSubagent:
             extract_depth=self._config.extract_depth,
             chunks_per_source=self._config.extract_chunks_per_source,
             timeout=self._config.extract_timeout_seconds,
-            max_retries=self._config.extract_max_retries,
+            max_retries=self._config.max_retries,
             max_content_length=self._backend.max_content_length,
         )
         url_to_result_id = {result.url: result_id for result_id, result in result_map.items()}

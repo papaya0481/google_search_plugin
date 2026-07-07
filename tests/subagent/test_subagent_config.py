@@ -23,9 +23,8 @@ def test_tavily_subagent_is_opt_in_and_bounded() -> None:
     assert config.plugin.config_version == "4.0.1"
     assert config.tavily_subagent.enabled is False
     assert config.tavily_subagent.max_rounds == 4
-    assert config.tavily_subagent.llm_max_retries == 2
+    assert config.tavily_subagent.max_retries == 2
     assert config.tavily_subagent.max_extract_calls == 2
-    assert config.tavily_subagent.extract_max_retries == 2
     assert config.tavily_subagent.extract_depth == "basic"
     assert config.tavily_subagent.extract_chunks_per_source == 3
 
