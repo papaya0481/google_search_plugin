@@ -207,7 +207,6 @@ class TavilySubagentSection(PluginConfigBase):
     enabled: bool = Field(default=False, description="是否启用 Tavily 私有搜索 subagent 实验功能")
     max_rounds: int = Field(default=4, ge=1, le=10, description="subagent 最大决策轮次")
     max_retries: int = Field(default=2, ge=0, le=5, description="subagent LLM 调用和 Extract 临时失败后的重试次数")
-    max_extract_calls: int = Field(default=2, ge=0, le=5, description="单次搜索最多执行的 Extract 动作次数")
     extract_depth: Literal["basic", "advanced"] = Field(default="basic", description="Tavily Extract 深度")
     extract_chunks_per_source: int = Field(default=3, ge=1, le=5, description="每个来源返回的相关正文片段数")
     extract_timeout_seconds: int = Field(default=30, ge=1, le=60, description="Tavily Extract 超时时间(秒)")
