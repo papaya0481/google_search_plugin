@@ -99,25 +99,49 @@ class GoogleSearchPlugin(MaiBotPlugin):
         }
 
     def get_components(self) -> list[dict[str, Any]]:
-        """收集组件声明,并按配置写入可开关组件的初始启用态。
+        """收集组件声明,按配置写入初始启用态,并注入 web_search 的 RPC 超时。
 
         关闭功能时不能直接从声明中剔除对应组件:组件不进注册表的话,
         运行时热启用会因"未找到组件"失败,只能重载插件恢复。
         因此保持注册、仅置为禁用态,使其不暴露给 planner。
+
+        timeout_ms 必须写在声明顶层:Host 侧只读 metadata 顶层的
+        ``timeout_ms``(缺省落 DEFAULT_COMPONENT_RPC_TIMEOUT_MS=60s),
+        而 ``@Tool`` 装饰器的额外 kwargs 会落入嵌套 metadata 不被读取;
+        慢模型下 summarize 单次即可超过 60s,整个 plugin.invoke_tool 会被截断。
         """
         components = super().get_components()
         try:
             states = self._configured_component_states()
         except Exception:  # noqa: BLE001
             states = {}
+        web_search_timeout_ms = self._web_search_rpc_timeout_ms()
         for comp in components:
-            state = states.get(comp.get("name", ""))
-            if state is None:
-                continue
+            name = comp.get("name", "")
             metadata = comp.get("metadata")
-            if isinstance(metadata, dict):
+            if not isinstance(metadata, dict):
+                continue
+            if name == "web_search":
+                metadata["timeout_ms"] = web_search_timeout_ms
+            state = states.get(name)
+            if state is not None:
                 metadata["enabled"] = state[1]
         return components
+
+    _WEB_SEARCH_RPC_FLOOR_SECONDS = 180
+    _WEB_SEARCH_NON_LLM_BUDGET_SECONDS = 120
+
+    def _web_search_rpc_timeout_ms(self) -> int:
+        """整体超时 = 单次 LLM 上限 + 搜索/抓取预算,下限 180s。"""
+        try:
+            llm_timeout = int(self.config.models.llm_timeout_seconds or 60)
+        except Exception:  # noqa: BLE001  # 配置尚未注入时按默认值兜底
+            llm_timeout = 60
+        total_seconds = max(
+            self._WEB_SEARCH_RPC_FLOOR_SECONDS,
+            llm_timeout + self._WEB_SEARCH_NON_LLM_BUDGET_SECONDS,
+        )
+        return total_seconds * 1000
 
     async def _sync_component_states(self) -> None:
         """按当前配置热切换可开关组件的启用状态。
