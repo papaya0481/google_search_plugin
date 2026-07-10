@@ -251,7 +251,6 @@ class GoogleSearchPlugin(MaiBotPlugin):
                 required=False,
             ),
         ],
-        timeout_ms=180000,
     )
     async def handle_web_search(
         self,
