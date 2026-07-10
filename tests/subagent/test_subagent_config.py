@@ -20,7 +20,7 @@ config_module = _load_config_module()
 def test_tavily_subagent_is_opt_in_and_bounded() -> None:
     config = config_module.GoogleSearchPluginConfig()
 
-    assert config.plugin.config_version == "4.0.1"
+    assert config.plugin.config_version == "4.0.0"
     assert config.tavily_subagent.enabled is False
     assert config.tavily_subagent.max_rounds == 4
     assert config.tavily_subagent.max_retries == 2
